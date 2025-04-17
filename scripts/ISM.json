@@ -18,7 +18,7 @@
                         },
                         "rollover": {
                             "min_size": "40gb",
-                            "min_index_age": "1d",
+
                             "copy_alias": false
                         }
                     }

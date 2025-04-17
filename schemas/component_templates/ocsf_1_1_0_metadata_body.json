@@ -604,7 +604,7 @@
                                                 },
                                                 "uid":{
                                                     "type":"keyword",
-                                                    "ignore_above":64
+                                                    "ignore_above":128
                                                 },
                                                 "version":{
                                                     "type":"keyword",
