@@ -2,17 +2,21 @@
     "AWSTemplateFormatVersion":"2010-09-09", 
     "Description":"OpenSearch for Amazon Security Lake - Kickoff Stack. **Attention** This template creates AWS resources that will incur charges on your account.",
     "Parameters":{
+        "AssetsBucketName": {
+            "Type": "String",
+            "Description": "Name of the S3 bucket containing the assets"
+        },
         "IPAddressRange": {
             "Type": "String",
             "Description": "Enter the IP address range to allow access to the security group (e.g. 10.0.0.0/24). Leave as 0.0.0.0/0 for internet access",
             "AllowedPattern": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\/([1-2]?[0-9]|3[0-2])$",
             "ConstraintDescription": "The IP address range must be in the format x.x.x.x/x (e.g. 10.0.0.0/24)."
-          },
+        },
         "DataNodeInstanceType": {
             "Type": "String",
             "Default": "r6g.large.search",
             "Description": "The instance type for the data nodes"
-          },
+        },
         "MasterNodeInstanceType": {
             "Type": "String",
             "Default": "m6g.large.search",
@@ -35,31 +39,15 @@
             "Type": "String",
             "Description": "ARN of the SQS queue from your Security Lake subscriber. It should look like this - arn:aws:sqs:ap-southeast-1:xxxxxxxx:AmazonSecurityLake-xxxxx-xxxx-xxxx-xxx-bd11d35431d9-Main-Queue"
             }
-    },
+        },
     "Resources":{
-        "slr":{
+        "cognito": {
             "Type" : "AWS::CloudFormation::Stack",
+            "DependsOn": "network",
             "Properties" : {
-                "TemplateURL" : "https://aws-security-blog-content.s3.us-east-1.amazonaws.com/public/sample/2791-deploy-amazon-opensearch-cluster-ingest-logs-amazon-security-lake/quickstart-slr.json",
-                "Parameters" : {
-                    "NetworkStackName" : { "Fn::GetAtt" : [ "network", "Outputs.StackName" ] }
-                }
-            }   
-        },
-        "initialisationfunction":{
-            "Type" : "AWS::CloudFormation::Stack",
-            "Properties" : {
-                "TemplateURL" : "https://ws-assets-prod-iad-r-iad-ed304a55c2ca1aee.s3.us-east-1.amazonaws.com/4192e8ce-704a-4400-8d18-81cac3e20e09/cfn/quickstart-copy-zip.yaml",
-                "Parameters" : {
-                    "NetworkStackName" : { "Fn::GetAtt" : [ "network", "Outputs.StackName" ] }
-                }
-            }   
-        },
-        "cognito" : {
-            "Type" : "AWS::CloudFormation::Stack",
-            "DependsOn": "slr",
-            "Properties" : {
-                "TemplateURL" : "https://aws-security-blog-content.s3.us-east-1.amazonaws.com/public/sample/2791-deploy-amazon-opensearch-cluster-ingest-logs-amazon-security-lake/quickstart-cognito.json",
+                "TemplateURL" : {
+                    "Fn::Sub": "https://${AssetsBucketName}.s3.amazonaws.com/cloudformation/quickstart-cognito.json"
+                },
                 "Parameters" : {
                     "NetworkStackName" : {"Fn::GetAtt":["network","Outputs.StackName"]}
                 }
@@ -68,7 +56,9 @@
         "network": {
             "Type" : "AWS::CloudFormation::Stack",
             "Properties" : {
-                "TemplateURL" : "https://aws-security-blog-content.s3.us-east-1.amazonaws.com/public/sample/2791-deploy-amazon-opensearch-cluster-ingest-logs-amazon-security-lake/quickstart-network.json",
+                "TemplateURL" : {
+                    "Fn::Sub": "https://${AssetsBucketName}.s3.amazonaws.com/cloudformation/quickstart-network.json"
+                },
                 "Parameters" : {
                     "EnvironmentTag" : {"Fn::Select":["4",{"Fn::Split":["-",{"Fn::Select":["2",{"Fn::Split":["/",{"Ref":"AWS::StackId"}]}]}]}]},
                     "CIDRPrefix" : "10.1"
@@ -78,7 +68,9 @@
         "ossearch" : {
             "Type" : "AWS::CloudFormation::Stack",
             "Properties" : {
-                "TemplateURL" : "https://aws-security-blog-content.s3.us-east-1.amazonaws.com/public/sample/2791-deploy-amazon-opensearch-cluster-ingest-logs-amazon-security-lake/quickstart-domain.json",
+                "TemplateURL" : {
+                    "Fn::Sub": "https://${AssetsBucketName}.s3.amazonaws.com/cloudformation/quickstart-domain.json"
+                },
                 "Parameters" : {
                     "MasterNodeInstanceType" : {"Ref": "MasterNodeInstanceType"},
                     "EBSVolumeSize": {"Ref": "EBSVolumeSize"},
@@ -87,18 +79,20 @@
                     "SearchDomainName" : {"Fn::Join":["",["securitylake-os-",{"Fn::Select":["4",{"Fn::Split":["-",{"Fn::Select":["2",{"Fn::Split":["/",{"Ref":"AWS::StackId"}]}]}]}]}]]},
                     "DataNodeInstanceType" : {"Ref": "DataNodeInstanceType"}
                 }
-                }
-            },
+            }
+        },
         "osproxy" : {
             "Type" : "AWS::CloudFormation::Stack",
             "Properties" : {
-                "TemplateURL" : "https://ws-assets-prod-iad-r-iad-ed304a55c2ca1aee.s3.us-east-1.amazonaws.com/4192e8ce-704a-4400-8d18-81cac3e20e09/cfn/quickstart-dashboards-proxy.json",
+                "TemplateURL" :{
+                    "Fn::Sub": "https://${AssetsBucketName}.s3.amazonaws.com/cloudformation/quickstart-dashboards-proxy.json"
+                },
                 "Parameters" : {
                     "NetworkStackName" : { "Fn::GetAtt" : [ "network", "Outputs.StackName" ] },
                     "SearchStackName" : { "Fn::GetAtt" : [ "ossearch", "Outputs.StackName" ] },
                     "CognitoStackName" : { "Fn::GetAtt" : [ "cognito", "Outputs.StackName" ] },
                     "IPAddressRange": {"Ref": "IPAddressRange"},
-                    "LambdaFunctionObjectBucket": { "Fn::GetAtt" : [ "initialisationfunction", "Outputs.LambdaFunctionObjectBucket" ] }
+                    "LambdaFunctionObjectBucket": {"Ref": "AssetsBucketName"}
                 }
             }                                      
         },
@@ -106,7 +100,9 @@
             "DependsOn": "osproxy",
             "Type" : "AWS::CloudFormation::Stack",
             "Properties" : {
-                "TemplateURL" : "https://aws-security-blog-content.s3.us-east-1.amazonaws.com/public/sample/2791-deploy-amazon-opensearch-cluster-ingest-logs-amazon-security-lake/quickstart-OSI-integrated.yaml",
+                "TemplateURL" : {
+                    "Fn::Sub": "https://${AssetsBucketName}.s3.amazonaws.com/cloudformation/quickstart-OSI-integrated.yaml"
+                },
                 "Parameters" : {
                     "NetworkStackName" : { "Fn::GetAtt" : [ "network", "Outputs.StackName" ] },
                     "SearchStackName" : { "Fn::GetAtt" : [ "ossearch", "Outputs.StackName" ] },

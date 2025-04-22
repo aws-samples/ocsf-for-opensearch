@@ -407,7 +407,7 @@
                 "S3Bucket": {
                     "Ref": "LambdaFunctionObjectBucket"
                     },
-                    "S3Key": "Klayers-p312-opensearch-py-94f72145-b3aa-4698-b962-5ca70864c436.zip"
+                    "S3Key": "lambda/Klayers-p312-opensearch-py-94f72145-b3aa-4698-b962-5ca70864c436.zip"
             },
             "LayerName": "Klayers-p312-opensearch-py"
             }
@@ -439,7 +439,7 @@
                 "S3Bucket": {
                     "Ref": "LambdaFunctionObjectBucket"
                     },
-                    "S3Key": "os_init_function.py.zip"
+                    "S3Key": "lambda/os_init_function.py.zip"
             },
              "VpcConfig": {
                  "SecurityGroupIds": [
@@ -489,6 +489,9 @@
                      }
                  ]
              ]
+             },
+             "ASSET_BUCKET":{
+                "Ref": "LambdaFunctionObjectBucket"
              }
              }
          }
