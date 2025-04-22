@@ -158,28 +158,37 @@ def install_component_templates():
 
     # Specify the bucket and file to download
     bucket_name = asset_bucket
-    file_key = 'lambda/component_templates.zip'
+    file_key = 'schemas/component_templates.zip'
 
     try:
         # Use the get_object API to download the file
         response = s3.get_object(Bucket=bucket_name, Key=file_key)
+        zip_path = os.path.join('/tmp', 'component_templates.zip')
+        print(f"Downloading component templates to: {os.path.abspath(zip_path)}")
+        
+        with open(zip_path, 'wb') as f:
+            f.write(response['Body'].read())
 
-        # Get the file content from the response
-        file_content = response['Body'].read()
+        # Extract zip file
+        extract_path = '/tmp/component_templates'
+        print(f"Extracting zip to: {extract_path}")
 
-        # Save the file content to a local file
-        local_file_path = '/tmp/component_templates.zip'
-        with open(local_file_path, 'wb') as f:
-            f.write(file_content)
-
-        # Unzip the file
-        with zipfile.ZipFile(local_file_path, 'r') as zip_ref:
-            zip_ref.extractall('/tmp')
-
+        # Create extraction directory if it doesn't exist
+        if not os.path.exists(extract_path):
+            os.makedirs(extract_path)
+            print(f"Created directory: {extract_path}")
+        
+        # Extract the zip file
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(extract_path)
+            print(f"Files in zip: {zip_ref.namelist()}")
+        
         print(f'File downloaded and unzipped successfully: {file_key}')
 
         for root, dirs, files in os.walk('/tmp/component_templates'):
+            print ('in loop')
             for file in files:
+                print (file)
                 if file.endswith('_body.json'):
                     file_path = os.path.join(root, file)
                     template_name = os.path.splitext(file)[0][:-5]  # Remove the "_body" suffix
@@ -213,25 +222,32 @@ def install_index_templates():
     s3 = boto3.client('s3')
 
     # Specify the bucket and file to download
-    bucket_name = 'aws-security-blog-content'
-    file_key = 'lambda/index_templates.zip'
+    bucket_name = asset_bucket
+    file_key = 'schemas/index_templates.zip'
 
     try:
         # Use the get_object API to download the file
         response = s3.get_object(Bucket=bucket_name, Key=file_key)
+        zip_path = os.path.join('/tmp', 'index_templates.zip')
+        print(f"Downloading index templates to: {os.path.abspath(zip_path)}")
+        
+        with open(zip_path, 'wb') as f:
+            f.write(response['Body'].read())
 
-        # Get the file content from the response
-        file_content = response['Body'].read()
+        # Extract zip file
+        extract_path = '/tmp/index_templates'
+        print(f"Extracting zip to: {extract_path}")
 
-        # Save the file content to a local file
-        local_file_path = '/tmp/index_templates.zip'
-        with open(local_file_path, 'wb') as f:
-            f.write(file_content)
-
-        # Unzip the file
-        with zipfile.ZipFile(local_file_path, 'r') as zip_ref:
-            zip_ref.extractall('/tmp')
-
+        # Create extraction directory if it doesn't exist
+        if not os.path.exists(extract_path):
+            os.makedirs(extract_path)
+            print(f"Created directory: {extract_path}")
+        
+        # Extract the zip file
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(extract_path)
+            print(f"Files in zip: {zip_ref.namelist()}")
+        
         print(f'File downloaded and unzipped successfully: {file_key}')
 
         for root, dirs, files in os.walk('/tmp/index_templates'):

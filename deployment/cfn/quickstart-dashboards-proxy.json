@@ -433,7 +433,7 @@
                   "OSInitLambdaRole",
                   "Arn"]
             },
-             "Handler": "os_init_function.lambda_handler",
+             "Handler": "deployment.Assets.os_init_function.lambda_handler",
              "Runtime": "python3.12",
              "Code": {
                 "S3Bucket": {
