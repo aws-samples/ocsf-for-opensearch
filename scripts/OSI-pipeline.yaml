@@ -24,6 +24,9 @@ s3-log-pipeline:
         grok_when: '/class_uid == 4002 and /metadata/product/name == "AWS WAF"'
         match:
           /metadata/product/feature/uid: [ "%{DATA}:%{DATA}:%{DATA}:%{DATA:/cloud/region}:%{DATA:/cloud/account/uid}:%{GREEDYDATA}" ]
+    - delete_entries:
+        with_keys: [ "/cloud/account" ]
+        delete_when: '/metadata/product/name == "Amazon EKS"'
     - grok:
         grok_when: '/class_uid == 6003 and /metadata/product/name == "Amazon EKS"'
         match:
