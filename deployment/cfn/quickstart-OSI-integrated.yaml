@@ -134,13 +134,13 @@ Resources:
               # Prevent data loss by only considering logs to be processed successfully after they are received by the opensearch sink
               acknowledgments: true
               notification_type: "sqs"
-              compression: "none"
+              compression: "gzip"
               notification_source: "eventbridge"
               codec:
                 parquet:
               sqs:
                 queue_url: "${SecLakeSubscriberSqsQueueURL}"
-                visibility_timeout: "60s"
+                visibility_timeout: "120s"
                 visibility_duplication_protection: true
               aws:
                 # Provide the region to use for aws credentials
@@ -148,20 +148,37 @@ Resources:
                 # Provide the role to assume for requests to SQS and S3
                 sts_role_arn: "${OpensearchIngestionPipelineRole.Arn}"
           processor:
-            - drop_events:
-                drop_when: '/status_code != "OK" and /metadata/product/name == "Amazon VPC"'
-            - lowercase_string:
-                with_keys: [ "/metadata/product/name", "/class_name" ]
-            - substitute_string:
-                entries:
-                  - source: "/metadata/product/name"
-                    from: "\\s"
-                    to: "_"
-                  - source: "/class_name"
-                    from: "\\s"
-                    to: "_"
-            - delete_entries:
-                with_keys: [ "s3" ]
+          - grok:
+              grok_when: '/class_uid == 4002 and /metadata/product/name == "AWS WAF"'
+              match:
+                /metadata/product/feature/uid: [ "%{DATA}:%{DATA}:%{DATA}:%{DATA:/cloud/region}:%{DATA:/cloud/account/uid}:%{GREEDYDATA}" ]
+          - delete_entries:
+              with_keys: [ "/cloud/account" ]
+              delete_when: '/metadata/product/name == "Amazon EKS"'
+          - grok:
+              grok_when: '/class_uid == 6003 and /metadata/product/name == "Amazon EKS"'
+              match:
+                /s3/key: [ "%{DATA}/%{DATA}/%{DATA}/%{DATA}=%{DATA:/cloud/region}/%{DATA}=%{DATA:/cloud/account/uid}/%{DATA}/%{GREEDYDATA}" ]
+          - drop_events:
+              drop_when: '/status_code != "OK" and /metadata/product/name == "Amazon VPC"'
+          - add_entries:
+              entries:
+                - key: "/cloud/account/uid"
+                  value_expression: "/unmapped/recipientAccountId"
+                  add_when: '/metadata/product/name == "CloudTrail"'
+                - key: "unmapped/s3_key"
+                  value_expression: "/s3/key"
+                - key: "unmapped/s3_bucket"
+                  value_expression: "/s3/bucket"  
+          - delete_entries:
+              with_keys: ["uid","s3"]
+          - lowercase_string:
+              with_keys: ["/class_name" ]
+          - substitute_string:
+              entries:
+                - source: "/class_name"
+                  from: "\\s"
+                  to: "_"
           sink:
             - opensearch:
                 hosts: [ "${OpenSearchDomainEndpoint}" ] 
